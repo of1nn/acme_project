@@ -2,7 +2,9 @@
 from django.views.generic import (
     CreateView, DeleteView, DetailView, ListView, UpdateView
 )
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
+from django.shortcuts import get_object_or_404
 
 from .forms import BirthdayForm
 from .models import Birthday
@@ -15,19 +17,39 @@ class BirthdayListView(ListView):
     paginate_by = 10
 
 
-class BirthdayCreateView(CreateView):
+class BirthdayCreateView(LoginRequiredMixin, CreateView):
+    model = Birthday
+    form_class = BirthdayForm
+    
+    def form_valid(self, form):
+        form.instace.author = self.request.user
+        return super().form_valid(form)
+    
+
+
+class BirthdayUpdateView(LoginRequiredMixin, UpdateView):
     model = Birthday
     form_class = BirthdayForm
 
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Получаем объект по первичному ключу и автору или вызываем 404 ошибку.
+        get_object_or_404(Birthday, pk=kwargs['pk'], author=request.user)
+        # Если объект был найден, то вызываем родительский метод, 
+        # чтобы работа CBV продолжилась.
+        return super().dispatch(request, *args, **kwargs) 
 
-class BirthdayUpdateView(UpdateView):
-    model = Birthday
-    form_class = BirthdayForm
-
-
-class BirthdayDeleteView(DeleteView):
+class BirthdayDeleteView(LoginRequiredMixin, DeleteView):
     model = Birthday
     success_url = reverse_lazy('birthday:list')
+    
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Получаем объект по первичному ключу и автору или вызываем 404 ошибку.
+        get_object_or_404(Birthday, pk=kwargs['pk'], author=request.user)
+        # Если объект был найден, то вызываем родительский метод, 
+        # чтобы работа CBV продолжилась.
+        return super().dispatch(request, *args, **kwargs) 
 
 
 class BirthdayDetailView(DetailView):
